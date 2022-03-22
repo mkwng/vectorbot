@@ -1,72 +1,104 @@
-import Discord, { TextChannel } from "discord.js";
+import {
+  Client,
+  EmojiResolvable,
+  Intents,
+  Message,
+  TextChannel,
+} from 'discord.js';
 
-const client = new Discord.Client({
-	intents: [Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILD_MESSAGE_REACTIONS],
+const client = new Client({
+  intents: [
+    Intents.FLAGS.GUILDS,
+    Intents.FLAGS.GUILD_MESSAGES,
+    Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
+  ],
 });
 
-const contributors = [
-	{
-		contributor: "Brand",
-		reaction: "🎨",
-	},
-	{
-		contributor: "Strategy",
-		reaction: "📓",
-	},
-	{
-		contributor: "Product design",
-		reaction: "📱",
-	},
-	{
-		contributor: "Frontend eng",
-		reaction: "💻",
-	},
-];
+const ContributorType = {
+  Brand: '🎨',
+  Strategy: '📓',
+  Product_design: '📱',
+  Frontend_eng: '💻',
+} as const;
 
-client.on("ready", () => {
-	console.log("ready!");
+type ContributorTypeKeys = keyof typeof ContributorType;
+type ContributorTypeEmojis = typeof ContributorType[ContributorTypeKeys];
+
+client.on('ready', () => {
+  console.log('ready!');
 });
 
-client.on("message", async (msg) => {
-	if (msg.channel.toString().toLowerCase() !== "call-for-contributors") return;
+client.on('message', async (msg) => {
+  if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID) return;
 
-	// TODO: Add to opportunities
+  const thread = await msg.startThread({
+    name: 'Call for contributors',
+    reason: 'Discussing the call for contributors',
+  });
 
-	const thread = await msg.startThread({
-		name: "Call for contributors",
-		reason: "Discussing the call for contributors",
-	});
-	contributors.forEach((contributorType) => {
-		if (!msg.content.includes(contributorType.reaction)) return;
-
-		msg.react(contributorType.reaction);
-
-		thread.send("Hey! I'm mentioning you because you said you were available...");
-		// TODO: Mention all available folks in thread
-	});
-});
-
-client.on("messageReactionAdd", (reaction, user) => {
-	if (user.bot) return;
-
-	// TODO: Check if the message is an opportunity
-	// // TODO: Check if the reaction is of the right type
-	// // TODO: Add user as interested in the opportunity
-
-	// TODO: Or, check if the message is a monthly post
-	// // TODO: Add user to list of available contributors
+  for (const emoji in ContributorType) {
+    if (!msg.content.includes(emoji)) return;
+    msg.react(emoji);
+    const availableContributors = await getAvailableContributors(
+      emoji as ContributorTypeEmojis
+    );
+    if (availableContributors) {
+      thread.send(
+        `The following members mentioned they are available for ${Object.keys(
+          ContributorType
+        )
+          .find((key) => key === emoji)
+          ?.replace('_', ' ')
+          .toLocaleLowerCase()} this month: ${availableContributors
+          .map((user) => '@' + user.toString())
+          .join(', ')}`
+      );
+    }
+  }
 });
 
 // TODO: Create endpoint for cron job to hit this monthly
 const monthlyPost = async () => {
-	// TODO: Clear list of available contributors
+  const contributorChannel = client.channels.cache.find(
+    (channel) => channel.id === process.env.CONTRIBUTOR_CHANNEL_ID
+  ) as TextChannel;
+  const msg = await contributorChannel.send(
+    "Who's interested in contributing to the project this month?"
+  );
 
-	const contributorChannel = client.channels.cache.find(
-		(channel) => channel.toString().toLowerCase() === "call-for-contributors"
-	) as TextChannel;
-	const msg = await contributorChannel.send("Who's interested in contributing to the project this month?");
-
-	contributors.forEach((contributorType) => {
-		msg.react(contributorType.reaction);
-	});
+  for (const emoji in ContributorType) {
+    msg.react(emoji);
+  }
 };
+
+const getAvailableContributors = async (emoji: ContributorTypeEmojis) => {
+  const latestAvailabilityPost = await getLatestAvailabilityPost();
+  if (!latestAvailabilityPost) {
+    console.error("Couldn't get latest availability post");
+    return;
+  }
+  const reactors = await getReactors(latestAvailabilityPost, emoji);
+  if (!reactors) return;
+  return reactors;
+};
+
+const getLatestAvailabilityPost = async () => {
+  const channel = client.channels.cache.find(
+    (channel) => channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID
+  ) as TextChannel;
+  const messages = await channel.messages.fetch();
+
+  return messages
+    .filter((message) => message.author.id === client.user?.id)
+    .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+    .first();
+};
+
+const getReactors = async (message: Message, emoji: EmojiResolvable) => {
+  const reactors = await message.reactions.cache
+    .get(emoji.toString())
+    ?.users.fetch();
+  return reactors?.filter((user) => !user.bot);
+};
+
+client.login(process.env.DISCORD_BOT_TOKEN);
