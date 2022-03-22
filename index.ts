@@ -37,7 +37,7 @@ client.on("message", async (msg) => {
 		reason: "Discussing the call for contributors",
 	});
 	contributors.forEach((contributorType) => {
-		if (msg.content.includes(contributorType.reaction)) return;
+		if (!msg.content.includes(contributorType.reaction)) return;
 
 		msg.react(contributorType.reaction);
 
