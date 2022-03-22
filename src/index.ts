@@ -1,28 +1,33 @@
+import { Collection, TextChannel, User } from 'discord.js';
 import {
-  Client,
-  EmojiResolvable,
-  Intents,
-  Message,
-  TextChannel,
-} from 'discord.js';
+  client,
+  getAvailableContributors,
+  getLatestAvailabilityPost,
+} from './utils';
 
-const client = new Client({
-  intents: [
-    Intents.FLAGS.GUILDS,
-    Intents.FLAGS.GUILD_MESSAGES,
-    Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-  ],
-});
+type RoleType = {
+  name: string;
+  emoji: string;
+};
 
-const ContributorType = {
-  Brand: '🎨',
-  Strategy: '📓',
-  Product_design: '📱',
-  Frontend_eng: '💻',
-} as const;
-
-type ContributorTypeKeys = keyof typeof ContributorType;
-type ContributorTypeEmojis = typeof ContributorType[ContributorTypeKeys];
+const roles: RoleType[] = [
+  {
+    name: 'Brand',
+    emoji: '🎨',
+  },
+  {
+    name: 'Strategy',
+    emoji: '📓',
+  },
+  {
+    name: 'Product design',
+    emoji: '📱',
+  },
+  {
+    name: 'Frontend eng',
+    emoji: '💻',
+  },
+];
 
 client.on('ready', () => {
   console.log('ready!');
@@ -36,25 +41,41 @@ client.on('message', async (msg) => {
     reason: 'Discussing the call for contributors',
   });
 
-  for (const emoji in ContributorType) {
-    if (!msg.content.includes(emoji)) return;
-    msg.react(emoji);
-    const availableContributors = await getAvailableContributors(
-      emoji as ContributorTypeEmojis
-    );
-    if (availableContributors) {
-      thread.send(
-        `The following members mentioned they are available for ${Object.keys(
-          ContributorType
-        )
-          .find((key) => key === emoji)
-          ?.replace('_', ' ')
-          .toLocaleLowerCase()} this month: ${availableContributors
-          .map((user) => '@' + user.toString())
-          .join(', ')}`
-      );
+  const matchedContributors = await roles.reduce<
+    Promise<
+      {
+        role: RoleType;
+        users: Collection<string, User>;
+      }[]
+    >
+  >(async (acc, role) => {
+    if (msg.content.includes(role.emoji)) {
+      const users = await getAvailableContributors(role.emoji);
+      if (users) {
+        return [
+          ...(await acc),
+          {
+            role,
+            users,
+          },
+        ];
+      }
     }
-  }
+    return acc;
+  }, Promise.resolve([]));
+
+  const text = matchedContributors.reduce((acc, { role, users }) => {
+    return (
+      acc +
+      `\n\n${role.emoji} ${role.name}: \n${
+        users.size
+          ? users.map((user) => '@' + user.username).join(' ')
+          : 'No one yet!'
+      }`
+    );
+  }, "Hey gang, looks like there's a call for contributors. Tagging everyone who&apos;s indicated they're available for the requested skillsets.");
+
+  thread.send(text);
 });
 
 // TODO: Create endpoint for cron job to hit this monthly
@@ -62,43 +83,27 @@ const monthlyPost = async () => {
   const contributorChannel = client.channels.cache.find(
     (channel) => channel.id === process.env.CONTRIBUTOR_CHANNEL_ID
   ) as TextChannel;
-  const msg = await contributorChannel.send(
-    "Who's interested in contributing to the project this month?"
+  const text = roles.reduce(
+    (acc, role) => {
+      return acc + `\n${role.emoji} ${role.name}`;
+    },
+    `Hey @everyone, looking for contributors for the month of March, please 
+	react to this message if you are available for any of these areas. If you 
+	react as available, you will get tagged in all new projects that could use 
+	someone of your skillset. \n\n
+	Please only react only if you are confident about 
+	your availability (15-30 hours split over 4-6 weeks), as we want to help 
+	project leads accurate understand who wants to contribute. \n`
   );
+  const msg = await contributorChannel.send(text);
 
-  for (const emoji in ContributorType) {
-    msg.react(emoji);
+  roles.forEach((role) => {
+    msg.react(role.emoji);
+  });
+};
+
+client.login(process.env.DISCORD_BOT_TOKEN).then(() => {
+  if (!getLatestAvailabilityPost()) {
+    monthlyPost();
   }
-};
-
-const getAvailableContributors = async (emoji: ContributorTypeEmojis) => {
-  const latestAvailabilityPost = await getLatestAvailabilityPost();
-  if (!latestAvailabilityPost) {
-    console.error("Couldn't get latest availability post");
-    return;
-  }
-  const reactors = await getReactors(latestAvailabilityPost, emoji);
-  if (!reactors) return;
-  return reactors;
-};
-
-const getLatestAvailabilityPost = async () => {
-  const channel = client.channels.cache.find(
-    (channel) => channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID
-  ) as TextChannel;
-  const messages = await channel.messages.fetch();
-
-  return messages
-    .filter((message) => message.author.id === client.user?.id)
-    .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
-    .first();
-};
-
-const getReactors = async (message: Message, emoji: EmojiResolvable) => {
-  const reactors = await message.reactions.cache
-    .get(emoji.toString())
-    ?.users.fetch();
-  return reactors?.filter((user) => !user.bot);
-};
-
-client.login(process.env.DISCORD_BOT_TOKEN);
+});
