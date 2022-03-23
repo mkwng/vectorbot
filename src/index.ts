@@ -105,46 +105,53 @@ client.on('messageCreate', async (msg) => {
 });
 
 export const monthlyPost = async () => {
-  const contributorChannel = (await client.channels.fetch(
-    process.env.CONTRIBUTOR_CHANNEL_ID || ''
-  )) as TextChannel;
-  if (!contributorChannel) {
-    console.error("Couldn't get contributor channel");
+  try {
+    const contributorChannel = (await client.channels.fetch(
+      process.env.CONTRIBUTOR_CHANNEL_ID || ''
+    )) as TextChannel | undefined;
+    if (!contributorChannel) {
+      console.error("Couldn't get contributor channel");
+      return;
+    }
+    // Unpin previous posts
+    const pinnedMessages = await contributorChannel.messages.fetchPinned();
+    for (let i = 0; i < pinnedMessages.size; i++) {
+      const message = pinnedMessages.at(i);
+      if (!message) continue;
+      if (msgIsMonthlyPost(message)) {
+        if (
+          message.content.includes(
+            `month of ${new Date().toLocaleString('default', {
+              month: 'long',
+            })}`
+          )
+        ) {
+          console.error('Already posted this month');
+          return;
+        }
+        message.unpin();
+      }
+    }
+    const text = roles.reduce(
+      (acc, role) => {
+        return acc + `\n${role.emoji} ${role.name}`;
+      },
+      `Hey @everyone, looking for contributors for the month of ${new Date().toLocaleString(
+        'default',
+        { month: 'long' }
+      )}, please react to this message if you are available for any of these areas. If you react as available, you will get tagged in all new projects that could use someone of your skillset. \n 
+Please only react only if you are confident about your availability (15-30 hours split over 4-6 weeks), as we want to help project leads accurate understand who wants to contribute. \n`
+    );
+    const msg = await contributorChannel.send(text);
+    msg.pin();
+
+    roles.forEach((role) => {
+      msg.react(role.emoji);
+    });
+  } catch (e) {
+    console.error(e);
     return;
   }
-  // Unpin previous posts
-  const pinnedMessages = await contributorChannel.messages.fetchPinned();
-  for (let i = 0; i < pinnedMessages.size; i++) {
-    const message = pinnedMessages.at(i);
-    if (!message) continue;
-    if (msgIsMonthlyPost(message)) {
-      if (
-        message.content.includes(
-          `month of ${new Date().toLocaleString('default', { month: 'long' })}`
-        )
-      ) {
-        console.error('Already posted this month');
-        return;
-      }
-      message.unpin();
-    }
-  }
-  const text = roles.reduce(
-    (acc, role) => {
-      return acc + `\n${role.emoji} ${role.name}`;
-    },
-    `Hey @everyone, looking for contributors for the month of ${new Date().toLocaleString(
-      'default',
-      { month: 'long' }
-    )}, please react to this message if you are available for any of these areas. If you react as available, you will get tagged in all new projects that could use someone of your skillset. \n 
-Please only react only if you are confident about your availability (15-30 hours split over 4-6 weeks), as we want to help project leads accurate understand who wants to contribute. \n`
-  );
-  const msg = await contributorChannel.send(text);
-  msg.pin();
-
-  roles.forEach((role) => {
-    msg.react(role.emoji);
-  });
 };
 
 client.login(process.env.DISCORD_BOT_TOKEN);
