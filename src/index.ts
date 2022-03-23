@@ -57,7 +57,7 @@ client.on('messageCreate', async (msg) => {
   // Try to parse the client name from the message. Example:
   // `Client: \nACME Corp`
   // should return "ACME Corp"
-  const clientName = msg.content.match(/Client: *\n+([^\n]+)/)?.[1];
+  const clientName = msg.content.match(/\**Client\**:\**\s*\n+([^\n]+)/)?.[1];
   const thread = await msg.startThread({
     name: clientName || 'New opportunity',
   });
@@ -84,6 +84,8 @@ client.on('messageCreate', async (msg) => {
     }
     return acc;
   }, Promise.resolve([]));
+
+  if (matchedContributors.length === 0) return;
 
   const text = matchedContributors.reduce((acc, { role, users }) => {
     return (
