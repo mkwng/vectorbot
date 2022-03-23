@@ -29,12 +29,17 @@ const roles: RoleType[] = [
   },
 ];
 
-client.on('ready', () => {
+client.on('ready', async () => {
   console.log('ready!');
+
+  if (!(await getLatestAvailabilityPost())) {
+    monthlyPost();
+  }
 });
 
-client.on('message', async (msg) => {
-  if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID) return;
+client.on('messageCreate', async (msg) => {
+  if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID || '') return;
+  if (msg.author.id === client.user?.id) return;
 
   const thread = await msg.startThread({
     name: 'Call for contributors',
@@ -69,32 +74,29 @@ client.on('message', async (msg) => {
       acc +
       `\n\n${role.emoji} ${role.name}: \n${
         users.size
-          ? users.map((user) => '@' + user.username).join(' ')
+          ? users.map((user) => user.toString()).join(' ')
           : 'No one yet!'
       }`
     );
-  }, "Hey gang, looks like there's a call for contributors. Tagging everyone who&apos;s indicated they're available for the requested skillsets.");
+  }, `Hey gang, looks like there’s a call for contributors. Tagging everyone whos indicated they’re available for the requested skillsets.`);
 
   thread.send(text);
 });
 
 // TODO: Create endpoint for cron job to hit this monthly
 const monthlyPost = async () => {
-  const contributorChannel = client.channels.cache.find(
-    (channel) => channel.id === process.env.CONTRIBUTOR_CHANNEL_ID
-  ) as TextChannel;
-  const text = roles.reduce(
-    (acc, role) => {
-      return acc + `\n${role.emoji} ${role.name}`;
-    },
-    `Hey @everyone, looking for contributors for the month of March, please 
-	react to this message if you are available for any of these areas. If you 
-	react as available, you will get tagged in all new projects that could use 
-	someone of your skillset. \n\n
-	Please only react only if you are confident about 
-	your availability (15-30 hours split over 4-6 weeks), as we want to help 
-	project leads accurate understand who wants to contribute. \n`
-  );
+  const contributorChannel = (await client.channels.fetch(
+    process.env.CONTRIBUTOR_CHANNEL_ID || ''
+  )) as TextChannel;
+  const text = roles.reduce((acc, role) => {
+    return acc + `\n${role.emoji} ${role.name}`;
+  }, 'Hey @everyone, looking for contributors for the month of March, please \
+	react to this message if you are available for any of these areas. If you \
+	react as available, you will get tagged in all new projects that could use \
+	someone of your skillset. \n\n \
+	Please only react only if you are confident about \
+	your availability (15-30 hours split over 4-6 weeks), as we want to help \
+	project leads accurate understand who wants to contribute. \n');
   const msg = await contributorChannel.send(text);
 
   roles.forEach((role) => {
@@ -102,8 +104,4 @@ const monthlyPost = async () => {
   });
 };
 
-client.login(process.env.DISCORD_BOT_TOKEN).then(() => {
-  if (!getLatestAvailabilityPost()) {
-    monthlyPost();
-  }
-});
+client.login(process.env.DISCORD_BOT_TOKEN);
