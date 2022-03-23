@@ -1,9 +1,11 @@
 import { Collection, TextChannel, User } from 'discord.js';
 import dotenv from 'dotenv';
+import { startServer } from './server';
 import {
   client,
   getAvailableContributors,
   getLatestAvailabilityPost,
+  msgIsMonthlyPost,
 } from './utils';
 
 type RoleType = {
@@ -89,26 +91,38 @@ client.on('messageCreate', async (msg) => {
           : 'No one yet!'
       }`
     );
-  }, `Hey gang, looks like there’s a call for contributors. Tagging everyone whos indicated they’re available for the requested skillsets.`);
+  }, `Hey gang, looks like there’s a call for contributors. Tagging everyone who’s indicated they’re available for the requested skillsets.`);
 
   thread.send(text);
 });
 
-// TODO: Create endpoint for cron job to hit this monthly
-const monthlyPost = async () => {
+export const monthlyPost = async () => {
   const contributorChannel = (await client.channels.fetch(
     process.env.CONTRIBUTOR_CHANNEL_ID || ''
   )) as TextChannel;
-  const text = roles.reduce((acc, role) => {
-    return acc + `\n${role.emoji} ${role.name}`;
-  }, 'Hey @everyone, looking for contributors for the month of March, please \
-react to this message if you are available for any of these areas. If you \
-react as available, you will get tagged in all new projects that could use \
-someone of your skillset. \n\n \
-Please only react only if you are confident about \
-your availability (15-30 hours split over 4-6 weeks), as we want to help \
-project leads accurate understand who wants to contribute. \n');
+  if (!contributorChannel) {
+    console.error("Couldn't get contributor channel");
+    return;
+  }
+  // Unpin previous posts
+  const pinnedMessages = await contributorChannel.messages.fetchPinned();
+  pinnedMessages.forEach((message) => {
+    if (msgIsMonthlyPost(message)) {
+      message.unpin();
+    }
+  });
+  const text = roles.reduce(
+    (acc, role) => {
+      return acc + `\n${role.emoji} ${role.name}`;
+    },
+    `Hey @everyone, looking for contributors for the month of ${new Date().toLocaleString(
+      'default',
+      { month: 'long' }
+    )}, please react to this message if you are available for any of these areas. If you react as available, you will get tagged in all new projects that could use someone of your skillset. \n\n 
+Please only react only if you are confident about your availability (15-30 hours split over 4-6 weeks), as we want to help project leads accurate understand who wants to contribute. \n`
+  );
   const msg = await contributorChannel.send(text);
+  msg.pin();
 
   roles.forEach((role) => {
     msg.react(role.emoji);
@@ -116,3 +130,4 @@ project leads accurate understand who wants to contribute. \n');
 };
 
 client.login(process.env.DISCORD_BOT_TOKEN);
+startServer();

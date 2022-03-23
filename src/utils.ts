@@ -14,6 +14,10 @@ export const client = new Client({
   ],
 });
 
+export const msgIsMonthlyPost = (message: Message) =>
+  message.author.id === client.user?.id &&
+  message.content.includes('Hey @everyone, looking for contributors');
+
 export const getAvailableContributors = async (emoji: string) => {
   const latestAvailabilityPost = await getLatestAvailabilityPost();
   if (!latestAvailabilityPost) {
@@ -30,20 +34,24 @@ export const getLatestAvailabilityPost = async () => {
     process.env.CONTRIBUTOR_CHANNEL_ID || ''
   )) as TextChannel;
   if (!channel) return;
-  const messages = await channel.messages.fetch();
-  if (!messages) return;
+  let lastID: string | undefined;
 
-  let thePost = messages
-    .filter((message) => message.author.id === client.user?.id)
-    .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
-    .first();
+  while (true) {
+    const fetchedMessages = await channel.messages.fetch({
+      limit: 100,
+      ...(lastID && { before: lastID }),
+    });
 
-  // TODO: If the post is further back and it wasn't returned by fetch, we need to look deeper
-  // const sorted = messages.sort((a, b) => b.createdTimestamp - a.createdTimestamp);
-  // const last = sorted.last();
-  // channel.messages.fetch({ before: last.id });
+    if (fetchedMessages.size === 0) {
+      return;
+    }
+    const matchedMessage = fetchedMessages.find(msgIsMonthlyPost);
+    if (matchedMessage) {
+      return matchedMessage;
+    }
 
-  return thePost;
+    lastID = fetchedMessages.lastKey();
+  }
 };
 
 const getReactors = async (message: Message, emoji: EmojiResolvable) => {
