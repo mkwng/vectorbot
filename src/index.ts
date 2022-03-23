@@ -97,7 +97,10 @@ client.on('messageCreate', async (msg) => {
     );
   }, `Hey gang, looks like there’s a call for contributors. Tagging everyone who’s indicated they’re available for the requested skillsets.`);
 
-  thread.send(text);
+  thread.send(
+    text +
+      `\n\n As a reminder, the project lead, ${msg.author.toString()} will reach out to contributors on this project to put together a team.`
+  );
 });
 
 export const monthlyPost = async () => {
