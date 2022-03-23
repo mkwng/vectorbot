@@ -55,10 +55,9 @@ client.on('messageCreate', async (msg) => {
   if (msg.author.id === client.user?.id) return;
 
   // Try to parse the client name from the message. Example:
-  // `Client:
-  // ACME Corp`
+  // `Client: \nACME Corp`
   // should return "ACME Corp"
-  const clientName = msg.content.match(/Client: (.*)/)?.[1];
+  const clientName = msg.content.match(/Client: *\n+([^\n]+)/)?.[1];
   const thread = await msg.startThread({
     name: clientName || 'New opportunity',
   });
