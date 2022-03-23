@@ -106,19 +106,21 @@ export const monthlyPost = async () => {
   }
   // Unpin previous posts
   const pinnedMessages = await contributorChannel.messages.fetchPinned();
-  pinnedMessages.forEach((message) => {
+  for (let i = 0; i < pinnedMessages.size; i++) {
+    const message = pinnedMessages.at(i);
+    if (!message) continue;
     if (msgIsMonthlyPost(message)) {
       if (
         message.content.includes(
           `month of ${new Date().toLocaleString('default', { month: 'long' })}`
         )
       ) {
-        console.error("There's already a post for this month");
+        console.error('Already posted this month');
         return;
       }
       message.unpin();
     }
-  });
+  }
   const text = roles.reduce(
     (acc, role) => {
       return acc + `\n${role.emoji} ${role.name}`;
