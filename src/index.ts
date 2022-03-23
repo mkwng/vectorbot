@@ -54,9 +54,13 @@ client.on('messageCreate', async (msg) => {
   if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID || '') return;
   if (msg.author.id === client.user?.id) return;
 
+  // Try to parse the client name from the message. Example:
+  // `Client:
+  // ACME Corp`
+  // should return "ACME Corp"
+  const clientName = msg.content.match(/Client: (.*)/)?.[1];
   const thread = await msg.startThread({
-    name: 'Call for contributors',
-    reason: 'Discussing the call for contributors',
+    name: clientName || 'New opportunity',
   });
 
   const matchedContributors = await roles.reduce<
@@ -128,7 +132,7 @@ export const monthlyPost = async () => {
     `Hey @everyone, looking for contributors for the month of ${new Date().toLocaleString(
       'default',
       { month: 'long' }
-    )}, please react to this message if you are available for any of these areas. If you react as available, you will get tagged in all new projects that could use someone of your skillset. \n\n 
+    )}, please react to this message if you are available for any of these areas. If you react as available, you will get tagged in all new projects that could use someone of your skillset. \n 
 Please only react only if you are confident about your availability (15-30 hours split over 4-6 weeks), as we want to help project leads accurate understand who wants to contribute. \n`
   );
   const msg = await contributorChannel.send(text);
