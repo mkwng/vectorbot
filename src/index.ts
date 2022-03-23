@@ -51,8 +51,14 @@ client.on('ready', async () => {
 });
 
 client.on('messageCreate', async (msg) => {
-  if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID || '') return;
-  if (msg.author.id === client.user?.id) return;
+  if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID || '') return; // Not in the right channel
+  if (msg.author.id === client.user?.id) return; // Ignore self
+
+  // Try to parse the client name from the message. Example:
+  // `Client: \nACME Corp`
+  // should return "ACME Corp"
+  const clientName = msg.content.match(/lient\**:\**\s*\n+([^\n]+)/)?.[1];
+  if (!clientName) return; // Did not detect a client name
 
   const matchedContributors = await roles.reduce<
     Promise<
@@ -76,13 +82,8 @@ client.on('messageCreate', async (msg) => {
     }
     return acc;
   }, Promise.resolve([]));
+  if (matchedContributors.length === 0) return; // No contributors needed
 
-  if (matchedContributors.length === 0) return;
-
-  // Try to parse the client name from the message. Example:
-  // `Client: \nACME Corp`
-  // should return "ACME Corp"
-  const clientName = msg.content.match(/lient\**:\**\s*\n+([^\n]+)/)?.[1];
   const thread = await msg.startThread({
     name: clientName || 'New opportunity',
   });
