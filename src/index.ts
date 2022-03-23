@@ -1,4 +1,5 @@
 import { Collection, TextChannel, User } from 'discord.js';
+import dotenv from 'dotenv';
 import {
   client,
   getAvailableContributors,
@@ -28,6 +29,16 @@ const roles: RoleType[] = [
     emoji: '💻',
   },
 ];
+
+dotenv.config();
+
+if (!process.env.DISCORD_BOT_TOKEN) {
+  throw new Error('No bot token found!');
+}
+
+if (!process.env.CONTRIBUTOR_CHANNEL_ID) {
+  throw new Error('No channel ID found!');
+}
 
 client.on('ready', async () => {
   console.log('ready!');
@@ -91,12 +102,12 @@ const monthlyPost = async () => {
   const text = roles.reduce((acc, role) => {
     return acc + `\n${role.emoji} ${role.name}`;
   }, 'Hey @everyone, looking for contributors for the month of March, please \
-	react to this message if you are available for any of these areas. If you \
-	react as available, you will get tagged in all new projects that could use \
-	someone of your skillset. \n\n \
-	Please only react only if you are confident about \
-	your availability (15-30 hours split over 4-6 weeks), as we want to help \
-	project leads accurate understand who wants to contribute. \n');
+react to this message if you are available for any of these areas. If you \
+react as available, you will get tagged in all new projects that could use \
+someone of your skillset. \n\n \
+Please only react only if you are confident about \
+your availability (15-30 hours split over 4-6 weeks), as we want to help \
+project leads accurate understand who wants to contribute. \n');
   const msg = await contributorChannel.send(text);
 
   roles.forEach((role) => {
