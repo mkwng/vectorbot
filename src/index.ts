@@ -28,7 +28,7 @@ const roles: RoleType[] = [
   },
   {
     name: 'Frontend eng',
-    emoji: '💻',
+    emoji: '🔨',
   },
 ];
 
