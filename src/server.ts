@@ -3,6 +3,7 @@ import { monthlyPost } from '.';
 
 const server = express();
 
+// https://www.easycron.com/cron/log/id/3687694
 server.all('/', (req, res) => {
   console.log('Request triggered');
   monthlyPost();
