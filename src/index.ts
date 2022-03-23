@@ -108,6 +108,14 @@ export const monthlyPost = async () => {
   const pinnedMessages = await contributorChannel.messages.fetchPinned();
   pinnedMessages.forEach((message) => {
     if (msgIsMonthlyPost(message)) {
+      if (
+        message.content.includes(
+          `month of ${new Date().toLocaleString('default', { month: 'long' })}`
+        )
+      ) {
+        console.error("There's already a post for this month");
+        return;
+      }
       message.unpin();
     }
   });

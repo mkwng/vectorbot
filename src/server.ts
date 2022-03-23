@@ -4,6 +4,7 @@ import { monthlyPost } from '.';
 const server = express();
 
 server.all('/', (req, res) => {
+  console.log('Request triggered');
   monthlyPost();
   res.send('Hello World');
 });
