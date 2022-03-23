@@ -54,14 +54,6 @@ client.on('messageCreate', async (msg) => {
   if (msg.channel.id !== process.env.CONTRIBUTOR_CHANNEL_ID || '') return;
   if (msg.author.id === client.user?.id) return;
 
-  // Try to parse the client name from the message. Example:
-  // `Client: \nACME Corp`
-  // should return "ACME Corp"
-  const clientName = msg.content.match(/\**Client\**:\**\s*\n+([^\n]+)/)?.[1];
-  const thread = await msg.startThread({
-    name: clientName || 'New opportunity',
-  });
-
   const matchedContributors = await roles.reduce<
     Promise<
       {
@@ -86,6 +78,14 @@ client.on('messageCreate', async (msg) => {
   }, Promise.resolve([]));
 
   if (matchedContributors.length === 0) return;
+
+  // Try to parse the client name from the message. Example:
+  // `Client: \nACME Corp`
+  // should return "ACME Corp"
+  const clientName = msg.content.match(/lient\**:\**\s*\n+([^\n]+)/)?.[1];
+  const thread = await msg.startThread({
+    name: clientName || 'New opportunity',
+  });
 
   const text = matchedContributors.reduce((acc, { role, users }) => {
     return (
