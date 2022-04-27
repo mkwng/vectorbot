@@ -24,7 +24,7 @@ const roles: RoleType[] = [
   },
   {
     name: 'Marketing site',
-    emoji: '🖼'
+    emoji: '🖼',
   },
   {
     name: 'Product design',
@@ -89,7 +89,7 @@ client.on('messageCreate', async (msg) => {
   if (matchedContributors.length === 0) return; // No contributors needed
 
   const thread = await msg.startThread({
-    name: clientName || 'New opportunity',
+    name: clientName.length > 99 ? 'New opportunity' : clientName,
   });
 
   const text = matchedContributors.reduce((acc, { role, users }) => {
