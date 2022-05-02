@@ -28,7 +28,7 @@ const roles: RoleType[] = [
   },
   {
     name: '3D',
-    emoji: '🪩',
+    emoji: '🧊',
   },
   {
     name: 'Product design',
