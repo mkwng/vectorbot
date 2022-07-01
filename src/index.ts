@@ -128,10 +128,15 @@ export const monthlyPost = async () => {
     }
     // Unpin previous posts
     const pinnedMessages = await contributorChannel.messages.fetchPinned();
+    console.log('  Pinned messages:', pinnedMessages.size);
     for (let i = 0; i < pinnedMessages.size; i++) {
       const message = pinnedMessages.at(i);
-      if (!message) continue;
+      if (!message) {
+        console.log('  Could not get message at index', i);
+        continue;
+      }
       if (msgIsMonthlyPost(message)) {
+        console.log('  Monthly post found @', message.id);
         if (
           message.content.includes(
             `month of ${new Date().toLocaleString('default', {
@@ -139,12 +144,13 @@ export const monthlyPost = async () => {
             })}`
           )
         ) {
-          console.error('Already posted this month');
+          console.error('  Already posted this month, ending process.');
           return;
         }
         message.unpin();
       }
     }
+    console.log('  Constructing monthly post...');
     const text = roles.reduce(
       (acc, role) => {
         return acc + `\n${role.emoji} ${role.name}`;
@@ -156,13 +162,14 @@ export const monthlyPost = async () => {
 Please only react only if you are confident about your availability (15-30 hours split over 4-6 weeks), as we want to help project leads accurate understand who wants to contribute. \n`
     );
     const msg = await contributorChannel.send(text);
+    console.log('  Pinning monthly post...');
     msg.pin();
-
     roles.forEach((role) => {
       msg.react(role.emoji);
     });
+    console.log('  Done!');
   } catch (e) {
-    console.error(e);
+    console.error('  ', e);
     return;
   }
 };
