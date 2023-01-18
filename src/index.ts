@@ -42,6 +42,10 @@ const roles: RoleType[] = [
     name: 'Webflow',
     emoji: '🕸',
   },
+  {
+    name: 'PM',
+    emoji: '📝',
+  },
 ];
 
 dotenv.config();
