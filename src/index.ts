@@ -61,8 +61,36 @@ if (!process.env.CONTRIBUTOR_CHANNEL_ID) {
 client.on('ready', async () => {
   console.log('ready!');
 
+  const command = {
+    name: 'refresh',
+    description: 'Manually refresh the monthly post',
+  };
+
+  await client.application?.commands.create(command);
+
   if (!(await getLatestAvailabilityPost())) {
     monthlyPost();
+  }
+});
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'refresh') {
+    await interaction.deferReply();
+    const latestPost = await getLatestAvailabilityPost();
+    
+    if (latestPost?.content.includes(
+      `month of ${new Date().toLocaleString('default', {
+        month: 'long',
+      })}`
+    )) {
+      await interaction.editReply('Monthly post already exists for this month!');
+      return;
+    }
+
+    await monthlyPost();
+    await interaction.editReply('Monthly post refreshed successfully!');
   }
 });
 

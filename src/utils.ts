@@ -15,6 +15,8 @@ export const client = new Client({
   ],
 });
 
+client.rest.on('rateLimited', console.log);
+
 export const msgIsMonthlyPost = (message: Message) =>
   message.author.id === client.user?.id &&
   message.content.includes('Hey @everyone, looking for contributors');
